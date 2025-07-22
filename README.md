@@ -99,3 +99,11 @@ To run this project locally, please follow these steps:
     flask run
     ```
     The application will be available at `http://127.0.0.1:5000`. The first time you run it, the Donut model will be downloaded from Hugging Face, which may take a few moments.
+
+Example:
+<img width="2479" height="1406" alt="Screenshot 2025-07-22 145248" src="https://github.com/user-attachments/assets/2b4d8ff6-01bc-4021-a624-a2d502c80dfb" />
+<img width="2338" height="1270" alt="Screenshot 2025-07-22 143239" src="https://github.com/user-attachments/assets/04f40f42-6228-4cbc-b834-73832df62d5e" />
+<img width="2539" height="936" alt="Screenshot 2025-07-22 145308" src="https://github.com/user-attachments/assets/c762f454-59a9-4543-89de-cc1aa3380650" />
+## The model needs to be fine tuned further. 
+I tried using gemini api key as well, which was way more accurate but did not match the requirements.
+If the deadline is extended i can integrate the desired [rule-based logic or traditional OCR for data extraction]. Thanks!!
