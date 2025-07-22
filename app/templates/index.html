@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+
+{% block content %}
+<header class="mb-8">
+    <h1 class="text-4xl font-bold text-slate-800 tracking-tight">Receipt Dashboard</h1>
+    <p class="text-slate-500 mt-1">Upload, track, and analyze your spending.</p>
+</header>
+
+<!-- Analytics Section -->
+<section class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+    <div class="bg-white p-6 rounded-xl shadow-md">
+        <h3 class="text-slate-500 font-medium">Total Spend</h3>
+        <p class="text-3xl font-bold text-slate-800 mt-1">${{ "%.2f"|format(analytics.total_spend) }}</p>
+    </div>
+    <div class="bg-white p-6 rounded-xl shadow-md">
+        <h3 class="text-slate-500 font-medium">Average Spend</h3>
+        <p class="text-3xl font-bold text-slate-800 mt-1">${{ "%.2f"|format(analytics.avg_spend) }}</p>
+    </div>
+    <div class="bg-white p-6 rounded-xl shadow-md">
+        <h3 class="text-slate-500 font-medium">Total Receipts</h3>
+        <p class="text-3xl font-bold text-slate-800 mt-1">{{ analytics.receipt_count }}</p>
+    </div>
+</section>
+
+<!-- Visualizations Section -->
+<section class="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-8">
+    <div class="bg-white p-6 rounded-xl shadow-md lg:col-span-3">
+        <h3 class="text-lg font-semibold text-slate-800 mb-4">Monthly Spend Trend</h3>
+        <canvas id="spendOverTimeChart"></canvas>
+    </div>
+    <div class="bg-white p-6 rounded-xl shadow-md lg:col-span-2">
+        <h3 class="text-lg font-semibold text-slate-800 mb-4">Spend by Category</h3>
+        <canvas id="spendByCategoryChart"></canvas>
+    </div>
+</section>
+
+<!-- Receipts Table Section -->
+<div class="bg-white rounded-xl shadow-md overflow-hidden">
+    <div class="p-6">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+                <h2 class="text-xl font-bold text-slate-800">All Receipts</h2>
+                <p class="text-slate-500 text-sm">Manage your uploaded receipts.</p>
+            </div>
+            <div class="flex items-center gap-2 w-full sm:w-auto">
+                <button onclick="document.getElementById('uploadModal').classList.remove('hidden')" class="bg-slate-800 text-white px-4 py-2 rounded-lg hover:bg-slate-700 transition-colors flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+                    Upload
+                </button>
+                <div class="flex gap-1">
+                    <a href="{{ url_for('main.export_csv') }}" class="bg-gray-200 text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-300 transition-colors text-sm">CSV</a>
+                    <a href="{{ url_for('main.export_json') }}" class="bg-gray-200 text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-300 transition-colors text-sm">JSON</a>
+                </div>
+            </div>
+        </div>
+        <!-- Search Form -->
+        <form method="GET" action="{{ url_for('main.index') }}" class="mt-4">
+            <div class="relative">
+                <input type="search" name="q" value="{{ query }}" placeholder="Search by vendor or category..." class="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                </span>
+            </div>
+        </form>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm text-left text-slate-500">
+            <thead class="text-xs text-slate-700 uppercase bg-slate-50">
+                <tr>
+                    {% macro sort_link(field, display_name) %}
+                    <th scope="col" class="px-6 py-3">
+                        <a href="{{ url_for('main.index', sort_by=field, order='asc' if sort_by == field and order == 'desc' else 'desc', q=query) }}" class="flex items-center gap-1">
+                            {{ display_name }}
+                            {% if sort_by == field %}
+                                {% if order == 'asc' %}
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg>
+                                {% else %}
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg>
+                                {% endif %}
+                            {% endif %}
+                        </a>
+                    </th>
+                    {% endmacro %}
+                    {{ sort_link('vendor', 'Vendor') }}
+                    {{ sort_link('transaction_date', 'Date') }}
+                    {{ sort_link('amount', 'Amount') }}
+                    {{ sort_link('category', 'Category') }}
+                    <!-- REMOVED Actions column header -->
+                </tr>
+            </thead>
+            <tbody>
+                {% for receipt in receipts %}
+                <tr class="bg-white border-b hover:bg-slate-50">
+                    <td class="px-6 py-4 font-medium text-slate-900">{{ receipt.vendor }}</td>
+                    <td class="px-6 py-4">{{ receipt.transaction_date.strftime('%Y-%m-%d') }}</td>
+                    <td class="px-6 py-4">${{ "%.2f"|format(receipt.amount) }}</td>
+                    <td class="px-6 py-4">{{ receipt.category or 'N/A' }}</td>
+                    <!-- REMOVED Actions table cell -->
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="4" class="text-center py-10 text-slate-500">No receipts found. Upload one to get started!</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Upload Modal -->
+<div id="uploadModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
+    <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
+        <h2 class="text-2xl font-bold mb-4">Upload Receipt</h2>
+        <form action="{{ url_for('main.upload_file') }}" method="post" enctype="multipart/form-data">
+            <input type="file" name="file" class="w-full border p-2 rounded-lg" required>
+            <div class="flex justify-end gap-4 mt-6">
+                <button type="button" onclick="document.getElementById('uploadModal').classList.add('hidden')" class="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg">Cancel</button>
+                <button type="submit" class="bg-slate-800 text-white px-4 py-2 rounded-lg">Upload</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Pass data to JavaScript -->
+<script>
+    const spendByCategoryData = {{ analytics.spend_by_category | tojson | safe }};
+    const spendOverTimeData = {{ analytics.spend_over_time | tojson | safe }};
+</script>
+{% endblock %}
